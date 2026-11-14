@@ -6,6 +6,7 @@ import { buildInfo, useNewerVersion, versionLabel } from './lib/version'
 import { useSwipe } from './lib/useSwipe'
 import SlipList, { slipsBetween, slipWeight } from './views/SlipList'
 import SlipForm from './views/SlipForm'
+import { MonthCalendar, WeekCalendar, YearCalendar } from './views/SlipCalendar'
 import PriceView from './views/PriceView'
 import SummaryView from './views/SummaryView'
 import SettingsView, { type Theme } from './views/SettingsView'
@@ -21,6 +22,7 @@ const THEME = 'scrap.theme'
 const TAB = 'scrap.tab'
 const VENDOR = 'scrap.vendorFilter'
 const VIEW = 'scrap.view'
+const MODE = 'scrap.mode' // 一覧 / カレンダー
 // 伝票の表示の範囲(家計簿のカレンダーと同じ 年・月・週・日)
 type View = 'year' | 'month' | 'week' | 'day'
 const VIEWS: [View, string][] = [
@@ -52,6 +54,12 @@ export default function App() {
   // 選んでいる日(年・月・週・日の表示の基準)
   const [sel, setSel] = useState(today)
   const [view, setViewState] = useState<View>(() => (VIEWS.some(([v]) => v === lsGet(VIEW)) ? (lsGet(VIEW) as View) : 'month'))
+  const [mode, setModeState] = useState<'list' | 'calendar'>(() => (lsGet(MODE) === 'calendar' ? 'calendar' : 'list'))
+  const setMode = (v: 'list' | 'calendar') => {
+    setModeState(v)
+    lsSet(MODE, v)
+    setSlide('')
+  }
   const setView = (v: View) => {
     setViewState(v)
     lsSet(VIEW, v)
@@ -255,6 +263,18 @@ export default function App() {
           <button type="button" className={`ghost small today-btn ${sel === today ? 'is-today' : ''}`} onClick={goToday}>
             今日
           </button>
+          <div className="seg" role="tablist" aria-label="一覧かカレンダーか">
+            {(
+              [
+                ['list', '一覧'],
+                ['calendar', 'カレンダー'],
+              ] as const
+            ).map(([v, label]) => (
+              <button key={v} type="button" role="tab" aria-selected={mode === v} className={mode === v ? 'on' : ''} onClick={() => setMode(v)}>
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="seg" role="tablist" aria-label="表示の範囲">
             {VIEWS.map(([v, label]) => (
               <button key={v} type="button" role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => setView(v)}>
@@ -282,8 +302,39 @@ export default function App() {
       )}
 
       <main className="main" {...(hasNav ? swipe : {})}>
-        <div key={hasNav ? `${tab}-${pv}-${range[0]}` : tab} className={`slide ${slide}`}>
-          {tab === 'slips' && <SlipList book={book} slips={periodSlips} showYear={pv === 'year'} onEdit={setForm} />}
+        <div key={hasNav ? `${tab}-${pv}-${range[0]}-${mode}` : tab} className={`slide ${slide}`}>
+          {tab === 'slips' && (mode === 'list' || pv === 'day') && <SlipList book={book} slips={periodSlips} showYear={pv === 'year'} onEdit={setForm} />}
+          {tab === 'slips' && mode === 'calendar' && pv === 'year' && (
+            <YearCalendar
+              year={y}
+              slips={periodSlips}
+              onPickDay={(d) => {
+                setSel(d)
+                setView('day')
+              }}
+              onPickMonth={(nym) => {
+                setSel(thisOr(`${nym}-01`))
+                setView('month')
+              }}
+            />
+          )}
+          {tab === 'slips' && mode === 'calendar' && pv === 'month' && (
+            <MonthCalendar book={book} year={y} month0={m - 1} slips={periodSlips} selected={sel} onSelect={setSel} onEdit={setForm} onAdd={(date) => setForm({ date })} />
+          )}
+          {tab === 'slips' && mode === 'calendar' && pv === 'week' && (
+            <WeekCalendar
+              book={book}
+              dates={Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))}
+              slips={periodSlips}
+              selected={sel}
+              onPickDay={(d) => {
+                setSel(d)
+                setView('day')
+              }}
+              onEdit={setForm}
+              onAdd={(date) => setForm({ date })}
+            />
+          )}
           {tab === 'price' && <PriceView book={book} vendor={vendor} />}
           {tab === 'summary' && (
             <SummaryView
@@ -305,7 +356,7 @@ export default function App() {
       </main>
 
       {tab === 'slips' && (
-        <button type="button" className="fab" onClick={() => setForm({ date: pv === 'day' ? sel : today })} title="新しい伝票(N キー)">
+        <button type="button" className="fab" onClick={() => setForm({ date: pv === 'day' || (mode === 'calendar' && pv === 'month') ? sel : today })} title="新しい伝票(N キー)">
           ＋ 新しい伝票
         </button>
       )}

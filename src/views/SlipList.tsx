@@ -10,6 +10,8 @@ interface Props {
   slips: Slip[]
   /** 年の表示のときは月ごとに見出しを付ける */
   showYear?: boolean
+  /** カレンダーの横に出すとき(上の「すべて開く」を出さない) */
+  compact?: boolean
   onEdit: (s: Slip) => void
 }
 
@@ -29,7 +31,7 @@ const shortDate = (ymd: string) => {
   return `${d.getMonth() + 1}月${d.getDate()}日(${WEEKDAYS[d.getDay()]})`
 }
 
-export default function SlipList({ book, slips, showYear, onEdit }: Props) {
+export default function SlipList({ book, slips, showYear, compact, onEdit }: Props) {
   // 開いている伝票(最初はすべて閉じる。月を移すと閉じた状態から)
   const [open, setOpen] = useState<Set<string>>(() => new Set())
   const toggle = (id: string) =>
@@ -44,6 +46,7 @@ export default function SlipList({ book, slips, showYear, onEdit }: Props) {
 
   return (
     <div className="slip-list">
+      {!compact && (
       <div className="slip-list-tools">
         <span className="muted">伝票を押すと中身が開きます</span>
         <span className="spacer" />
@@ -51,6 +54,7 @@ export default function SlipList({ book, slips, showYear, onEdit }: Props) {
           {allOpen ? 'すべて閉じる' : 'すべて開く'}
         </button>
       </div>
+      )}
       {slips.map((s, i) => {
         const isOpen = open.has(s.id)
         const ymKey = s.date.slice(0, 7)

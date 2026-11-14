@@ -635,3 +635,18 @@ input[type='color'] { padding: 2px; width: 40px; height: 34px; }
 .view-switch { gap: 8px; align-items: center; }
 .today-btn.is-today { color: var(--accent); border-color: var(--accent); }
 .slip-month-head { display: flex; align-items: baseline; gap: 10px; padding: 8px 4px 2px; border-bottom: 1px solid var(--border); }
+
+/* カレンダー(買取金額) */
+.view-switch { flex-wrap: wrap; }
+.buy-amt { color: var(--accent); font-weight: bold; font-variant-numeric: tabular-nums; }
+.cell .amt.buy-amt { font-size: 13px; }
+.mini-day.bought { background: color-mix(in srgb, var(--accent) var(--lv), transparent); }
+.day-panel .slip-list { gap: 4px; }
+.day-panel .slip-row { padding: 10px 8px; }
+@media (max-width: 860px) {
+  .cal-layout { grid-template-columns: minmax(0, 1fr); }
+  .day-panel { position: static; }
+  .cell { min-height: 58px; padding: 3px; }
+  .cell .amt.buy-amt { font-size: 11px; }
+}
+@media (max-width: 400px) { .view-switch .seg button { padding: 5px 12px; } }
