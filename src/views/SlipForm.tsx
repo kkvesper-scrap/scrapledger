@@ -150,6 +150,13 @@ export default function SlipForm({ book, initial, onSave, onDelete, onClose, upd
     update((b) => ({ ...b, vendors: { ...b.vendors, [id]: { id, name, order: ord, updatedAt: stamp() } } }))
     return id
   }
+  /** 名前を変える(同じ名前が他にあれば変えない)。過去の伝票の表示も新しい名前になる */
+  const rename = (kind: 'items' | 'vendors', id: string, name: string): string | null => {
+    const list = kind === 'items' ? items : vendors
+    if (list.some((c) => c.id !== id && normalizeName(c.name) === normalizeName(name))) return `「${name}」はもうあります`
+    update((b) => ({ ...b, [kind]: { ...b[kind], [id]: { ...b[kind][id], name, updatedAt: stamp() } } }))
+    return null
+  }
   const unhide = (kind: 'items' | 'vendors', id: string) =>
     update((b) => ({ ...b, [kind]: { ...b[kind], [id]: { ...b[kind][id], hidden: undefined, updatedAt: stamp() } } }))
 
@@ -269,7 +276,7 @@ export default function SlipForm({ book, initial, onSave, onDelete, onClose, upd
 
         <div className="field">
           <div className="field-label">業者</div>
-          <NamePicker label="業者" list={vendors} recent={recentVendors} value={vendorId} onChange={changeVendor} onAdd={addVendor} onUnhide={(id) => unhide('vendors', id)} />
+          <NamePicker label="業者" list={vendors} recent={recentVendors} value={vendorId} onChange={changeVendor} onAdd={addVendor} onUnhide={(id) => unhide('vendors', id)} onRename={(id, name) => rename('vendors', id, name)} />
         </div>
 
         <div className="field scale-field">
@@ -431,6 +438,7 @@ export default function SlipForm({ book, initial, onSave, onDelete, onClose, upd
             label="品目"
             list={items}
             disabled={inSlip}
+            onRename={(id, name) => rename('items', id, name)}
             onClose={() => setPicking(false)}
             onPick={(c) => {
               if (c.hidden) unhide('items', c.id)

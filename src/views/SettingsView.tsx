@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { BookApi } from '../lib/useBook'
 import { canPickFolder, pickRoot } from '../lib/backup'
 import { bookToCsv, downloadText } from '../lib/csv'
-import { liveItems, liveSlips, liveVendors, mergeBooks, newId, parseBook, ROUNDING_LABEL, sameBook, settingsOf, sortBook, stamp, type Book, type Rounding } from '../lib/model'
+import { liveItems, liveSlips, liveVendors, mergeBooks, newId, normalizeName, parseBook, ROUNDING_LABEL, sameBook, settingsOf, sortBook, stamp, type Book, type Rounding } from '../lib/model'
 import { ymd } from '../lib/dates'
 import { buildInfo, useNewerVersion } from '../lib/version'
 import { loadPickOrder, PICK_ORDER_LABEL, pickColor, savePickOrder, type PickOrder } from '../lib/usage'
@@ -245,17 +245,27 @@ function ListEditor({ api, book, kind }: { api: BookApi; book: Book; kind: 'item
         {list.map((c, i) => (
           <li key={c.id} className={c.hidden ? 'hidden-cat' : ''}>
             {'color' in c && <input type="color" value={String(c.color)} onChange={(e) => patch(c.id, { color: e.target.value })} aria-label="色" />}
-            <input
-              className="cat-name"
-              defaultValue={c.name}
-              key={c.name}
-              onBlur={(e) => {
-                const v = e.target.value.trim()
-                if (v && v !== c.name) patch(c.id, { name: v })
-                else e.target.value = c.name
-              }}
-              aria-label="名前"
-            />
+            <label className="name-edit" title="押して名前を書き換え、欄の外を押すと保存します">
+              <span className="pen" aria-hidden="true">
+                ✎
+              </span>
+              <input
+                className="cat-name"
+                defaultValue={c.name}
+                key={c.name}
+                onBlur={(e) => {
+                  const v = e.target.value.trim()
+                  if (!v || v === c.name) return void (e.target.value = c.name)
+                  if (list.some((x) => x.id !== c.id && normalizeName(x.name) === normalizeName(v))) {
+                    alert(`「${v}」はもうあります`)
+                    return void (e.target.value = c.name)
+                  }
+                  patch(c.id, { name: v })
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                aria-label={`${label}の名前`}
+              />
+            </label>
             <span className="muted">{used.get(c.id) ?? 0}回</span>
             <button type="button" className="ghost small" onClick={() => move(i, -1)} disabled={i === 0} aria-label="上へ">
               ↑
@@ -276,7 +286,7 @@ function ListEditor({ api, book, kind }: { api: BookApi; book: Book; kind: 'item
         ))}
         {!list.length && <li className="muted">まだありません(伝票の入力画面からも追加できます)</li>}
       </ul>
-      <p className="muted small-note">伝票で使った{label}は削除できません(「隠す」で入力画面に出さないようにできます)。名前を変えると、過去の伝票の表示も新しい名前になります。</p>
+      <p className="muted small-note">✎ の欄を押すと名前を書き換えられます(Enter か欄の外を押すと保存)。名前を変えると、過去の伝票の表示も新しい名前になります。伝票で使った{label}は削除できません(「隠す」で入力画面に出さないようにできます)。</p>
       <div className="btn-row">
         <input placeholder={`新しい${label}の名前`} value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} />
         <button type="button" onClick={add}>

@@ -24,10 +24,12 @@ interface Props {
   onUnhide: (id: string) => void
   /** 「業者」「品目」など */
   label: string
+  /** 名前を変える。うまくいかなければ理由を返す */
+  onRename?: (id: string, name: string) => string | null
 }
 
 /** 1つだけ選ぶ(業者) */
-export default function NamePicker({ list, recent, value, onChange, onAdd, onUnhide, label }: Props) {
+export default function NamePicker({ list, recent, value, onChange, onAdd, onUnhide, label, onRename }: Props) {
   const [open, setOpen] = useState(false)
   const cur = list.find((c) => c.id === value)
   const shownRecent = recent.filter((c) => !c.hidden)
@@ -53,6 +55,7 @@ export default function NamePicker({ list, recent, value, onChange, onAdd, onUnh
           list={list}
           value={value}
           label={label}
+          onRename={onRename}
           onClose={() => setOpen(false)}
           onPick={(c) => {
             if (c.hidden) onUnhide(c.id)
@@ -77,6 +80,7 @@ export function PickerDialog({
   onPick,
   onAdd,
   disabled,
+  onRename,
 }: {
   list: Pickable[]
   value?: string
@@ -86,9 +90,21 @@ export function PickerDialog({
   onAdd: (name: string) => void
   /** 選べないもの(伝票にすでにある品目など)。灰色で出す */
   disabled?: Set<string>
+  /** 名前を変える(各行の ✎)。うまくいかなければ理由を返す */
+  onRename?: (id: string, name: string) => string | null
 }) {
   useBackClose(onClose)
   const [q, setQ] = useState('')
+  const [editing, setEditing] = useState<{ id: string; name: string; err: string } | null>(null)
+  const commitRename = () => {
+    if (!editing || !onRename) return
+    const name = editing.name.trim()
+    const cur = list.find((c) => c.id === editing.id)
+    if (!name || name === cur?.name) return setEditing(null)
+    const e = onRename(editing.id, name)
+    if (e) setEditing({ ...editing, err: e })
+    else setEditing(null)
+  }
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
 
@@ -146,14 +162,44 @@ export function PickerDialog({
         <ul className="picker-list" ref={listRef}>
           {results.map((c) => {
             const off = disabled?.has(c.id)
+            if (editing?.id === c.id)
+              return (
+                <li key={c.id} className="rename-row">
+                  <input
+                    autoFocus
+                    value={editing.name}
+                    onChange={(e) => setEditing({ ...editing, name: e.target.value, err: '' })}
+                    onKeyDown={(e) => {
+                      e.stopPropagation()
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        commitRename()
+                      } else if (e.key === 'Escape') setEditing(null)
+                    }}
+                    aria-label={`${c.name}の新しい名前`}
+                  />
+                  <button type="button" className="small" onClick={commitRename}>
+                    決定
+                  </button>
+                  <button type="button" className="ghost small" onClick={() => setEditing(null)}>
+                    やめる
+                  </button>
+                  {editing.err && <div className="msg error">{editing.err}</div>}
+                </li>
+              )
             return (
-              <li key={c.id}>
+              <li key={c.id} className={onRename ? 'with-rename' : ''}>
                 <button type="button" className={c.id === value ? 'on' : ''} disabled={off} onClick={() => onPick(c)}>
                   {c.color && <span className="cat-dot" style={{ background: c.color }} />}
                   <span>{c.name}</span>
                   {off && <span className="muted hidden-mark">入力済み</span>}
                   {c.hidden && <span className="muted hidden-mark">隠している{label}(選ぶと再表示)</span>}
                 </button>
+                {onRename && (
+                  <button type="button" className="ghost small rename-btn" onClick={() => setEditing({ id: c.id, name: c.name, err: '' })} title="名前を変える" aria-label={`${c.name}の名前を変える`}>
+                    ✎
+                  </button>
+                )}
               </li>
             )
           })}

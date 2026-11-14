@@ -557,7 +557,7 @@ input[type='color'] { padding: 2px; width: 40px; height: 34px; }
 .memo-in { width: 100%; font: inherit; font-size: 16px; resize: vertical; }
 
 /* 伝票の一覧 */
-.slip-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr)); gap: 10px; max-width: 1200px; margin: 0 auto; }
+.slip-list { display: flex; flex-direction: column; gap: 6px; max-width: 860px; margin: 0 auto; }
 .slip-card { display: block; width: 100%; text-align: left; color: var(--text); cursor: pointer; padding: 10px 12px; }
 .slip-card:hover { border-color: var(--accent); }
 .slip-card-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
@@ -591,4 +591,42 @@ input[type='color'] { padding: 2px; width: 40px; height: 34px; }
   .amount-cell { grid-column: 1 / -1; padding-top: 0; }
   .amount-cell .lcell-label { position: static; display: inline; margin-right: auto; }
   .total-yen { font-size: 22px; }
+}
+
+/* 検索・一覧の ✎(名前を変える) */
+.picker-list li.with-rename { display: flex; align-items: stretch; }
+.picker-list li.with-rename > button:first-child { flex: 1; min-width: 0; }
+.picker-list li button.rename-btn { width: auto; flex: none; padding: 0 16px; font-size: 17px; color: var(--muted); }
+.picker-list li button.rename-btn:hover { color: var(--accent); }
+.picker-list li.rename-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; border-bottom: 1px solid var(--border); background: var(--selected); }
+.picker-list li.rename-row input { flex: 1; min-width: 140px; font-size: 16px; padding: 8px 10px; }
+.picker-list li.rename-row .msg { flex-basis: 100%; margin: 0; }
+/* 設定の名前欄 */
+.name-edit { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 140px; }
+.name-edit .pen { color: var(--muted); font-size: 15px; }
+
+/* 伝票の折りたたみ */
+.slip-list-tools { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 0 2px; }
+.slip-item { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.slip-item.open { border-color: var(--accent); }
+.slip-row {
+  display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto; gap: 10px; align-items: baseline;
+  width: 100%; text-align: left; background: transparent; color: var(--text); border: 0; border-radius: 0; padding: 12px 14px; font-size: 15.5px;
+}
+.slip-row:hover { background: var(--other); }
+.slip-caret { color: var(--muted); width: 1em; }
+.slip-row .slip-date { font-weight: bold; white-space: nowrap; }
+.slip-row .slip-vendor { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slip-count { font-size: 12.5px; white-space: nowrap; }
+.slip-row .slip-total-yen { font-size: 17px; text-align: right; white-space: nowrap; }
+.slip-body { padding: 4px 14px 12px; border-top: 1px solid var(--grid); }
+.slip-table th { font-weight: normal; font-size: 12px; text-align: right; padding: 4px; }
+.slip-table th:first-child { text-align: left; }
+.slip-table tfoot td { border-bottom: 0; border-top: 1px solid var(--border); padding-top: 6px; }
+.slip-note { font-size: 13px; margin-top: 6px; white-space: pre-wrap; }
+.slip-actions { justify-content: flex-end; }
+@media (max-width: 480px) {
+  .slip-row { grid-template-columns: auto auto minmax(0, 1fr) auto; gap: 8px; padding: 12px 10px; font-size: 15px; }
+  .slip-row .slip-count { display: none; }
+  .slip-body { padding: 4px 10px 10px; }
 }
