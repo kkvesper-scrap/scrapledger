@@ -1,0 +1,16 @@
+{
+  "name": "スクラップ買取帳",
+  "short_name": "買取帳",
+  "description": "スクラップ買取の伝票(品目ごとの重量・単価・金額)を記録し、単価の推移を見るアプリ(データは自分の Google ドライブと端末にだけ保存)",
+  "lang": "ja",
+  "id": "/scrapledger/",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#15171b",
+  "theme_color": "#2fa89a",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
