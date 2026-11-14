@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useBook } from './lib/useBook'
 import { kg, liveVendors, stamp, yen, type Slip } from './lib/model'
-import { ymd } from './lib/dates'
+import { addDays, jpDate, parseYmd, ymd } from './lib/dates'
 import { buildInfo, useNewerVersion, versionLabel } from './lib/version'
 import { useSwipe } from './lib/useSwipe'
-import SlipList, { slipsOf, slipWeight } from './views/SlipList'
+import SlipList, { slipsBetween, slipWeight } from './views/SlipList'
 import SlipForm from './views/SlipForm'
 import PriceView from './views/PriceView'
 import SummaryView from './views/SummaryView'
@@ -20,6 +20,15 @@ const TABS: [Tab, string][] = [
 const THEME = 'scrap.theme'
 const TAB = 'scrap.tab'
 const VENDOR = 'scrap.vendorFilter'
+const VIEW = 'scrap.view'
+// 伝票の表示の範囲(家計簿のカレンダーと同じ 年・月・週・日)
+type View = 'year' | 'month' | 'week' | 'day'
+const VIEWS: [View, string][] = [
+  ['year', '年'],
+  ['month', '月'],
+  ['week', '週'],
+  ['day', '日'],
+]
 
 const lsGet = (k: string) => {
   try {
@@ -40,7 +49,14 @@ export default function App() {
   const api = useBook()
   const { book } = api
   const today = ymd(new Date())
-  const [ym, setYm] = useState(today.slice(0, 7))
+  // 選んでいる日(年・月・週・日の表示の基準)
+  const [sel, setSel] = useState(today)
+  const [view, setViewState] = useState<View>(() => (VIEWS.some(([v]) => v === lsGet(VIEW)) ? (lsGet(VIEW) as View) : 'month'))
+  const setView = (v: View) => {
+    setViewState(v)
+    lsSet(VIEW, v)
+    setSlide('')
+  }
   const [tab, setTab] = useState<Tab>(() => (TABS.some(([t]) => t === lsGet(TAB)) ? (lsGet(TAB) as Tab) : 'slips'))
   const [form, setForm] = useState<{ date: string } | Slip | null>(null)
   // 画面は最初から暗い表示(ユーザーの希望)。設定で変えられる
@@ -68,27 +84,54 @@ export default function App() {
     lsSet(TAB, t)
   }
 
+  const ym = sel.slice(0, 7)
   const [y, m] = ym.split('-').map(Number)
-  const byYear = tab === 'summary'
+  const selDate = parseYmd(sel)
+  // 集計は年で見る。伝票は 年・月・週・日 を切り替える
+  const pv: View = tab === 'summary' ? 'year' : view
+  const weekStart = addDays(selDate, -((selDate.getDay() + 6) % 7)) // 週は月曜始まり
+  const weekEnd = addDays(weekStart, 6)
+  const range: [string, string] =
+    pv === 'year' ? [`${y}-01-01`, `${y}-12-31`] : pv === 'month' ? [`${ym}-01`, `${ym}-31`] : pv === 'week' ? [ymd(weekStart), ymd(weekEnd)] : [sel, sel]
+  const thisOr = (d: string) => (d.slice(0, 7) === today.slice(0, 7) ? today : d)
   const shift = (d: number) => {
-    const nd = byYear ? new Date(y + d, m - 1, 1) : new Date(y, m - 1 + d, 1)
-    setYm(ymd(nd).slice(0, 7))
+    if (pv === 'year') setSel(thisOr(ymd(new Date(y + d, m - 1, 1))))
+    else if (pv === 'month') setSel(thisOr(ymd(new Date(y, m - 1 + d, 1))))
+    else setSel(ymd(addDays(selDate, d * (pv === 'week' ? 7 : 1))))
     setSlide(d > 0 ? 'next' : 'prev')
   }
+  const goToday = () => {
+    setSlide(sel < today ? 'next' : sel > today ? 'prev' : '')
+    setSel(today)
+  }
+  const unit = { year: '年', month: '月', week: '週', day: '日' }[pv]
+  const md = (d: Date) => `${d.getMonth() + 1}月${d.getDate()}日`
+  const navLabel =
+    pv === 'year'
+      ? `${y}年`
+      : pv === 'month'
+        ? `${y}年${m}月`
+        : pv === 'week'
+          ? // 短く: 今年なら年を省き、同じ月なら終わりは日だけ(例 11月9日〜15日)
+            `${weekStart.getFullYear() !== Number(today.slice(0, 4)) || weekEnd.getFullYear() !== weekStart.getFullYear() ? `${weekStart.getFullYear()}年` : ''}${md(weekStart)}〜${
+              weekEnd.getFullYear() !== weekStart.getFullYear() ? `${weekEnd.getFullYear()}年${md(weekEnd)}` : weekEnd.getMonth() === weekStart.getMonth() ? `${weekEnd.getDate()}日` : md(weekEnd)
+            }`
+          : jpDate(selDate)
+  const periodName = { year: `${y}年`, month: `${m}月`, week: 'この週', day: 'この日' }[pv]
   const [slide, setSlide] = useState<'next' | 'prev' | ''>('')
   const hasNav = tab === 'slips' || tab === 'summary'
-  // スマホ: 左右にスワイプで月(集計では年)を移す
+  // スマホ: 左右にスワイプで前後の期間へ
   const swipe = useSwipe((dir) => hasNav && shift(dir === 'left' ? 1 : -1))
 
-  const monthSlips = useMemo(() => (book ? slipsOf(book, ym, vendor) : []), [book, ym, vendor])
-  const monthTotal = monthSlips.reduce((t, s) => t + s.total, 0)
-  const monthWeight = Math.round(monthSlips.reduce((t, s) => t + slipWeight(s), 0) * 1000) / 1000
+  const periodSlips = useMemo(() => (book ? slipsBetween(book, range[0], range[1], vendor) : []), [book, range[0], range[1], vendor])
+  const periodTotal = periodSlips.reduce((t, s) => t + s.total, 0)
+  const periodWeight = Math.round(periodSlips.reduce((t, s) => t + slipWeight(s), 0) * 1000) / 1000
 
   const save = useCallback(
     (s: Slip) => {
       api.ensureLogin()
       api.update((b) => ({ ...b, slips: { ...b.slips, [s.id]: s } }))
-      setYm(s.date.slice(0, 7))
+      setSel(s.date)
     },
     [api],
   )
@@ -138,13 +181,13 @@ export default function App() {
         <div className="title">スクラップ買取帳</div>
         {hasNav && (
           <div className="month-nav">
-            <button type="button" className="ghost small" onClick={() => shift(-1)} aria-label={byYear ? '前の年' : '前の月'}>
+            <button type="button" className="ghost small" onClick={() => shift(-1)} aria-label={`前の${unit}`}>
               ‹
             </button>
-            <button type="button" className="ghost small month-label" onClick={() => setYm(today.slice(0, 7))} title={byYear ? '今年に戻る' : '今月に戻る'}>
-              {byYear ? `${y}年` : `${y}年${m}月`}
+            <button type="button" className="ghost small month-label" onClick={goToday} title="今日に戻る">
+              {navLabel}
             </button>
-            <button type="button" className="ghost small" onClick={() => shift(1)} aria-label={byYear ? '次の年' : '次の月'}>
+            <button type="button" className="ghost small" onClick={() => shift(1)} aria-label={`次の${unit}`}>
               ›
             </button>
           </div>
@@ -208,25 +251,39 @@ export default function App() {
       )}
 
       {tab === 'slips' && (
+        <div className="cal-switch view-switch">
+          <button type="button" className={`ghost small today-btn ${sel === today ? 'is-today' : ''}`} onClick={goToday}>
+            今日
+          </button>
+          <div className="seg" role="tablist" aria-label="表示の範囲">
+            {VIEWS.map(([v, label]) => (
+              <button key={v} type="button" role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => setView(v)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {tab === 'slips' && (
         <div className="month-sum">
           <div>
-            <span className="muted">{m}月の買取金額</span>
-            <b>{yen(monthTotal)}</b>
+            <span className="muted">{periodName}の買取金額</span>
+            <b>{yen(periodTotal)}</b>
           </div>
           <div>
             <span className="muted">重量</span>
-            <b>{kg(monthWeight)}</b>
+            <b>{kg(periodWeight)}</b>
           </div>
           <div>
             <span className="muted">伝票</span>
-            <b>{monthSlips.length}枚</b>
+            <b>{periodSlips.length}枚</b>
           </div>
         </div>
       )}
 
       <main className="main" {...(hasNav ? swipe : {})}>
-        <div key={hasNav ? `${tab}-${byYear ? y : ym}` : tab} className={`slide ${slide}`}>
-          {tab === 'slips' && <SlipList book={book} ym={ym} vendor={vendor} onEdit={setForm} />}
+        <div key={hasNav ? `${tab}-${pv}-${range[0]}` : tab} className={`slide ${slide}`}>
+          {tab === 'slips' && <SlipList book={book} slips={periodSlips} showYear={pv === 'year'} onEdit={setForm} />}
           {tab === 'price' && <PriceView book={book} vendor={vendor} />}
           {tab === 'summary' && (
             <SummaryView
@@ -234,7 +291,8 @@ export default function App() {
               year={y}
               vendor={vendor}
               onOpenMonth={(nym) => {
-                setYm(nym)
+                setSel(thisOr(`${nym}-01`))
+                setView('month')
                 go('slips')
               }}
             />
@@ -247,7 +305,7 @@ export default function App() {
       </main>
 
       {tab === 'slips' && (
-        <button type="button" className="fab" onClick={() => setForm({ date: today })} title="新しい伝票(N キー)">
+        <button type="button" className="fab" onClick={() => setForm({ date: pv === 'day' ? sel : today })} title="新しい伝票(N キー)">
           ＋ 新しい伝票
         </button>
       )}

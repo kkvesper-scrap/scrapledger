@@ -1,18 +1,24 @@
 // 伝票の一覧(月ごと)。伝票ごとに折りたたみ(日付・業者・品目数・合計の1行)、押すと開く。
 // 開いた中の「この伝票を直す」で入力画面へ
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { itemName, kg, liveSlips, num, vendorName, yen, type Book, type Slip } from '../lib/model'
 import { WEEKDAYS, parseYmd } from '../lib/dates'
 
 interface Props {
   book: Book
-  /** 2026-11 の形。'' なら全期間 */
-  ym: string
-  vendor: string // '' = すべて
+  /** 表示する伝票(新しい順) */
+  slips: Slip[]
+  /** 年の表示のときは月ごとに見出しを付ける */
+  showYear?: boolean
   onEdit: (s: Slip) => void
 }
 
 export const slipWeight = (s: Slip) => Math.round(s.lines.reduce((t, l) => t + l.weight, 0) * 1000) / 1000
+
+/** from〜to(2026-11-01 の形、両端を含む)の伝票。vendor '' はすべての業者 */
+export function slipsBetween(book: Book, from: string, to: string, vendor: string) {
+  return liveSlips(book).filter((s) => s.date >= from && s.date <= to && (!vendor || s.vendorId === vendor))
+}
 
 export function slipsOf(book: Book, prefix: string, vendor: string) {
   return liveSlips(book).filter((s) => s.date.startsWith(prefix) && (!vendor || s.vendorId === vendor))
@@ -23,8 +29,7 @@ const shortDate = (ymd: string) => {
   return `${d.getMonth() + 1}月${d.getDate()}日(${WEEKDAYS[d.getDay()]})`
 }
 
-export default function SlipList({ book, ym, vendor, onEdit }: Props) {
-  const slips = slipsOf(book, ym, vendor)
+export default function SlipList({ book, slips, showYear, onEdit }: Props) {
   // 開いている伝票(最初はすべて閉じる。月を移すと閉じた状態から)
   const [open, setOpen] = useState<Set<string>>(() => new Set())
   const toggle = (id: string) =>
@@ -34,7 +39,7 @@ export default function SlipList({ book, ym, vendor, onEdit }: Props) {
       else n.add(id)
       return n
     })
-  if (!slips.length) return <p className="muted empty-note">この月の伝票はありません。下の「＋ 新しい伝票」から入力してください。</p>
+  if (!slips.length) return <p className="muted empty-note">この期間の伝票はありません。下の「＋ 新しい伝票」から入力してください。</p>
   const allOpen = slips.every((s) => open.has(s.id))
 
   return (
@@ -46,10 +51,22 @@ export default function SlipList({ book, ym, vendor, onEdit }: Props) {
           {allOpen ? 'すべて閉じる' : 'すべて開く'}
         </button>
       </div>
-      {slips.map((s) => {
+      {slips.map((s, i) => {
         const isOpen = open.has(s.id)
+        const ymKey = s.date.slice(0, 7)
+        const monthHead = showYear && (i === 0 || slips[i - 1].date.slice(0, 7) !== ymKey)
+        const monthList = monthHead ? slips.filter((x) => x.date.slice(0, 7) === ymKey) : []
         return (
-          <div key={s.id} className={`slip-item ${isOpen ? 'open' : ''}`}>
+          <Fragment key={s.id}>
+          {monthHead && (
+            <div className="slip-month-head">
+              <b>{Number(s.date.slice(5, 7))}月</b>
+              <span className="muted">
+                {monthList.length}枚・{yen(monthList.reduce((t, x) => t + x.total, 0))}
+              </span>
+            </div>
+          )}
+          <div className={`slip-item ${isOpen ? 'open' : ''}`}>
             <button type="button" className="slip-row" onClick={() => toggle(s.id)} aria-expanded={isOpen}>
               <span className="slip-caret" aria-hidden="true">
                 {isOpen ? '▾' : '▸'}
@@ -102,6 +119,7 @@ export default function SlipList({ book, ym, vendor, onEdit }: Props) {
               </div>
             )}
           </div>
+          </Fragment>
         )
       })}
     </div>
