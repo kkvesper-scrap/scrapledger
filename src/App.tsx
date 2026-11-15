@@ -22,6 +22,7 @@ const THEME = 'scrap.theme'
 const TAB = 'scrap.tab'
 const VENDOR = 'scrap.vendorFilter'
 const VIEW = 'scrap.view'
+const SUMVIEW = 'scrap.sumView'
 const MODE = 'scrap.mode' // 一覧 / カレンダー
 // 伝票の表示の範囲(家計簿のカレンダーと同じ 年・月・週・日)
 type View = 'year' | 'month' | 'week' | 'day'
@@ -95,8 +96,14 @@ export default function App() {
   const ym = sel.slice(0, 7)
   const [y, m] = ym.split('-').map(Number)
   const selDate = parseYmd(sel)
-  // 集計は年で見る。伝票は 年・月・週・日 を切り替える
-  const pv: View = tab === 'summary' ? 'year' : view
+  // 集計は 年・月(詳細)、伝票は 年・月・週・日 を切り替える
+  const [sumView, setSumViewState] = useState<'year' | 'month'>(() => (lsGet(SUMVIEW) === 'month' ? 'month' : 'year'))
+  const setSumView = (v: 'year' | 'month') => {
+    setSumViewState(v)
+    lsSet(SUMVIEW, v)
+    setSlide('')
+  }
+  const pv: View = tab === 'summary' ? sumView : view
   const weekStart = addDays(selDate, -((selDate.getDay() + 6) % 7)) // 週は月曜始まり
   const weekEnd = addDays(weekStart, 6)
   const range: [string, string] =
@@ -284,6 +291,25 @@ export default function App() {
           </div>
         </div>
       )}
+      {tab === 'summary' && (
+        <div className="cal-switch view-switch">
+          <button type="button" className={`ghost small today-btn ${sel === today ? 'is-today' : ''}`} onClick={goToday}>
+            今日
+          </button>
+          <div className="seg" role="tablist" aria-label="集計の範囲">
+            {(
+              [
+                ['year', '年'],
+                ['month', '月(詳細)'],
+              ] as const
+            ).map(([v, label]) => (
+              <button key={v} type="button" role="tab" aria-selected={sumView === v} className={sumView === v ? 'on' : ''} onClick={() => setSumView(v)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {tab === 'slips' && (
         <div className="month-sum">
           <div>
@@ -340,12 +366,19 @@ export default function App() {
             <SummaryView
               book={book}
               year={y}
+              month={sumView === 'month' ? m : undefined}
               vendor={vendor}
-              onOpenMonth={(nym) => {
+              onPickMonth={(nym) => {
+                setSel(thisOr(`${nym}-01`))
+                setSumView('month')
+                window.scrollTo(0, 0)
+              }}
+              onOpenSlips={(nym) => {
                 setSel(thisOr(`${nym}-01`))
                 setView('month')
                 go('slips')
               }}
+              onEdit={setForm}
             />
           )}
           {tab === 'settings' && <SettingsView api={api} book={book} theme={theme} setTheme={setTheme} />}

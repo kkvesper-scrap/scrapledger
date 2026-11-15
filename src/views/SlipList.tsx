@@ -3,6 +3,7 @@
 import { Fragment, useState } from 'react'
 import { itemName, kg, liveSlips, num, vendorName, yen, type Book, type Slip } from '../lib/model'
 import { WEEKDAYS, parseYmd } from '../lib/dates'
+import NameCell from './NameCell'
 
 interface Props {
   book: Book
@@ -94,10 +95,7 @@ export default function SlipList({ book, slips, showYear, compact, onEdit }: Pro
                   <tbody>
                     {s.lines.map((l) => (
                       <tr key={l.id}>
-                        <td className="st-name">
-                          <span className="cat-dot" style={{ background: book.items[l.itemId]?.color ?? '#888' }} />
-                          {itemName(book, l)}
-                        </td>
+                        <NameCell name={itemName(book, l)} color={book.items[l.itemId]?.color ?? '#888'} />
                         <td className="st-num">{kg(l.weight)}</td>
                         <td className="st-num">{num(l.price)}円</td>
                         <td className="st-num st-amt">{yen(l.amount)}</td>

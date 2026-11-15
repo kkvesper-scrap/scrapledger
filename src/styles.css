@@ -659,3 +659,12 @@ input[type='color'] { padding: 2px; width: 40px; height: 34px; }
   .cell .amt.buy-amt { font-size: 11px; }
 }
 @media (max-width: 400px) { .view-switch .seg button { padding: 5px 12px; } }
+
+/* 長い品目名・業者名: 画面からはみ出さないよう折り返す(ver 0.1.5) */
+.slip-row .slip-vendor { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; line-height: 1.3; }
+.line-name b { min-width: 0; overflow-wrap: anywhere; line-height: 1.3; }
+.line-name button { flex: none; }
+.cat-chip { max-width: min(100%, 16em); white-space: normal; overflow-wrap: anywhere; text-align: left; }
+.legend > span { max-width: 100%; overflow-wrap: anywhere; }
+.sum-table .pt-name { width: 100%; }
+.cat-select-name, .week-entry-name { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; line-height: 1.3; }

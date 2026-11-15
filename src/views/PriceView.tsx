@@ -4,6 +4,7 @@ import { liveItems, num, priceHistory, type Book } from '../lib/model'
 import { parseYmd } from '../lib/dates'
 import { LineChart, type LineSeries } from './charts'
 import { itemUse } from '../lib/usage'
+import NameCell from './NameCell'
 
 type Period = '3m' | '6m' | '1y' | 'all'
 const PERIODS: [Period, string][] = [
@@ -138,10 +139,7 @@ export default function PriceView({ book, vendor }: { book: Book; vendor: string
                   <td>
                     <input type="checkbox" checked={on} readOnly aria-label={`${r.it.name}をグラフに出す`} />
                   </td>
-                  <td className="pt-name">
-                    <span className="cat-dot" style={{ background: r.it.color }} />
-                    <span className="pt-name-text">{r.it.name}</span>
-                  </td>
+                  <NameCell name={r.it.name} color={r.it.color} />
                   <td className="st-num">
                     <b>{num(r.last.price)}円</b>
                     <div className="muted tiny-note">{r.last.date.replaceAll('-', '/')}</div>
