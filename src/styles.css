@@ -571,6 +571,15 @@ input[type='color'] { padding: 2px; width: 40px; height: 34px; }
 .price-table tbody tr { cursor: pointer; }
 .price-table tr.on { background: var(--selected); }
 .st-name { display: flex; align-items: center; gap: 6px; }
+/* 品目ごとの単価の表: 長い品目名は2行まで折り返す(それ以上は…) */
+.price-table .pt-name { width: 100%; }
+.pt-name .cat-dot { vertical-align: top; margin: 4px 6px 0 0; float: left; }
+.pt-name-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; line-height: 1.3; }
+@media (max-width: 560px) {
+  .price-table { font-size: 13.5px; }
+  .price-table th { font-size: 11.5px; white-space: normal; }
+  .pt-range { display: block; }
+}
 .st-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .st-amt { font-weight: bold; }
 .slip-card-foot { font-size: 12.5px; margin-top: 4px; }

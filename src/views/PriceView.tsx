@@ -138,15 +138,23 @@ export default function PriceView({ book, vendor }: { book: Book; vendor: string
                   <td>
                     <input type="checkbox" checked={on} readOnly aria-label={`${r.it.name}をグラフに出す`} />
                   </td>
-                  <td className="ct-name">
-                    <span className="cat-dot" style={{ background: r.it.color }} /> {r.it.name}
+                  <td className="pt-name">
+                    <span className="cat-dot" style={{ background: r.it.color }} />
+                    <span className="pt-name-text">{r.it.name}</span>
                   </td>
                   <td className="st-num">
                     <b>{num(r.last.price)}円</b>
                     <div className="muted tiny-note">{r.last.date.replaceAll('-', '/')}</div>
                   </td>
                   <td className="st-num">{diff === null ? '—' : diff === 0 ? '±0' : <span className={diff > 0 ? 'up' : 'down'}>{diff > 0 ? `▲${num(diff)}` : `▼${num(-diff)}`}</span>}</td>
-                  <td className="st-num">{r.min === null ? '—' : r.min === r.max ? `${num(r.min)}円` : `${num(r.min)}〜${num(r.max!)}円`}</td>
+                  <td className="st-num">
+                    {r.min === null ? '—' : r.min === r.max ? `${num(r.min)}円` : (
+                      <>
+                        <span className="pt-range">{num(r.min)}〜</span>
+                        <span className="pt-range">{num(r.max!)}円</span>
+                      </>
+                    )}
+                  </td>
                 </tr>
               )
             })}
